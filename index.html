@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>炎洲集團訪客登記系統</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            color: #333;
+            margin: 0;
+            background-color: #f7f9fc;
+        }
+
+        .banner {
+            background-color: #ffffff;
+            color: #333;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the text */
+            position: relative; /* Setup absolute positioning for logo */
+            font-size: 46px; /* Increased from 38px */
+            font-weight: 900;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-bottom: 4px solid #004e92;
+        }
+
+        .banner img {
+            position: absolute;
+            left: 40px; /* Force to the left */
+            max-height: 45px; /* Decreased from 70px */
+            object-fit: contain;
+        }
+
+        .banner span {
+            color: #004e92;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            /* Create a highly visible 3D effect */
+            text-shadow: 2px 2px 0px #ced4da, 4px 4px 5px rgba(0, 78, 146, 0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background-color: #e2e8f0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: all 0.2s;
+            color: #333;
+            border: 1px solid #cbd5e1;
+        }
+
+        .tab:hover {
+            background-color: #cbd5e1;
+        }
+
+        .tab.active {
+            background-color: #004e92;
+            color: white;
+            border-color: #004e92;
+        }
+
+        #loading {
+            font-size: 18px;
+            color: #004e92;
+            text-align: center;
+            margin: 40px 0;
+            font-weight: bold;
+        }
+
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        .date-filter label {
+            font-size: 14px;
+        }
+
+        .date-filter input {
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-family: inherit;
+            color: #333;
+        }
+
+        .date-filter button {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .date-filter button:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 50%;
+        }
+
+        #searchInput {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            width: 100%;
+            max-width: 300px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #searchInput:focus {
+            border-color: #004e92;
+            box-shadow: 0 0 0 2px rgba(0, 78, 146, 0.1);
+        }
+
+        .container {
+            max-width: 95%; /* Make container wider for better table viewing */
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow-x: auto; /* Allow horizontal scrolling if table is too wide */
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 1200px; /* Ensure columns don't get too squeezed */
+            margin-top: 20px;
+            table-layout: fixed; /* Fixed column widths */
+        }
+
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        td {
+            max-width: 0; /* Required for overflow:hidden to work in fixed-layout tables */
+        }
+
+        th {
+            background-color: #f8fafc;
+            cursor: pointer;
+            user-select: none;
+            color: #1e293b;
+        }
+
+        th:hover {
+            background-color: #f1f5f9;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid #cbd5e1;
+            background-color: #fff;
+            border-radius: 4px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #f1f5f9;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .nav-buttons {
+            position: absolute;
+            right: 40px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .admin-btn {
+            background-color: #f8fafc;
+            color: #004e92;
+            border: 2px solid #004e92;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .admin-btn:hover {
+            background-color: #004e92;
+            color: #fff;
+        }
+
+        .home-btn {
+            background-color: #004e92;
+            color: #fff;
+            border: 2px solid #004e92;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .home-btn:hover {
+            background-color: #003366;
+            border-color: #003366;
+        }
+
+        .dashboard {
+            display: none; /* hidden by default */
+            max-width: 95%;
+            margin: 0 auto;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: flex-start;
+        }
+        
+        .chart-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            flex: 1 1 calc(33.333% - 15px);
+            min-width: 320px;
+            max-height: 380px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-box-tall {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            flex: 1 1 calc(50% - 15px);
+            min-width: 420px;
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="banner">
+        <img src="https://www.ycgroup.tw/images/logo.png" alt="炎洲集團" style="cursor:pointer;" onclick="location.href='index.html'">
+        <span>訪客登記系統</span>
+        <div class="nav-buttons">
+            <button class="home-btn" onclick="location.href='index.html'">🏠 回到首頁</button>
+            <button class="admin-btn" onclick="toggleAdmin()">⚙️ 管理分析</button>
+        </div>
+    </div>
+    
+    <div class="tabs" id="mainTabs">
+        <div class="tab active" onclick="loadTab('1401484943', this)">內湖</div>
+        <div class="tab" onclick="loadTab('930740199', this)">楊梅</div>
+        <div class="tab" onclick="loadTab('412432769', this)">彰濱薄膜</div>
+        <div class="tab" onclick="loadTab('545698913', this)">彰濱膠帶</div>
+    </div>
+
+    <!-- MAIN DATA TABLE VIEW -->
+    <div class="container" id="mainContainer">
+        <div id="loading">正在載入資料中，請稍候...</div>
+
+        <div class="controls-bar" id="searchControls" style="display:none;">
+            <div class="date-filter">
+                <label for="dateInput">依特定日期檢視：</label>
+                <input type="date" id="dateInput" onchange="searchData()">
+                <button onclick="clearDate()" title="清除日期">✖</button>
+            </div>
+            
+            <div id="statSummary" style="margin-left:auto; margin-right:20px; font-weight:bold; color:#0369a1; display:flex; gap:15px; align-items:center; background:#eff6ff; padding:5px 15px; border-radius:20px; border:1px solid #bfdbfe;">
+                <span><span id="statLabelToday">📅 今日訪客：</span><span id="todayCount">0</span></span>
+                <span style="color:#cbd5e1;">|</span>
+                <span><span id="statLabelTotal">📊 總計訪客：</span><span id="totalCount">0</span></span>
+            </div>
+
+            <input type="text" id="searchInput" placeholder="關鍵字搜尋全欄位..." onkeyup="searchData()" autocomplete="off">
+        </div>
+
+        <table id="dataTable" style="display:none;">
+            <thead>
+                <tr id="tableHead"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="pagination" id="paginationControls" style="display:none;">
+            <button id="btnFirst" onclick="changePage('first')">最前頁</button>
+            <button id="btnPrev" onclick="changePage(-1)">上一頁</button>
+            <span id="pageInfo"></span>
+            <button id="btnNext" onclick="changePage(1)">下一頁</button>
+            <button id="btnLast" onclick="changePage('last')">最後頁</button>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD VIEW -->
+    <div class="dashboard" id="adminDashboard">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <h3 style="color: #004e92; margin: 0; font-size: 24px;">管理中心 [v3.1] - 各廠區統計與郵件排程系統</h3>
+            <div style="display:flex; gap:10px;">
+                <button onclick="toggleAdmin()" style="padding: 8px 15px; background: #e2e8f0; border-radius: 4px; font-weight: bold; border: none; cursor:pointer;">✖ 返回列表</button>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">✉️</span> 自動報表排程</h4>
+            <label style="font-size:15px; margin-left: 20px; flex: 1; display:flex; align-items:center;">收件人(多筆逗號分隔): 
+                <input type="text" id="mailRecipients" style="flex: 1; margin-left:10px; padding: 8px; border:1px solid #cbd5e1; border-radius:4px; max-width:100%;" placeholder="userA@yemchio.com, userB@yemchio.com">
+            </label>
+            <label style="font-size:15px; margin-left: 10px;">每日寄出時間: <input type="time" id="mailTime" style="padding: 8px; border:1px solid #cbd5e1; border-radius:4px;"></label>
+            <button onclick="saveMailConfig()" style="background:#004e92; color:white; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:15px;">💾 儲存設定</button>
+            <button onclick="testMail()" style="background:#64748b; color:white; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold;">🚀 立即強制發送測試信</button>
+            <span id="mailStatus" style="color:#059669; font-weight:bold; font-size:15px; margin-left:10px;"></span>
+        </div>
+
+        <!-- NEW DATE SEARCH SECTION -->
+        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">🔍</span> 依日期查詢當晚訪客明細 (格式同郵件)</h4>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="date" id="searchDateInput" style="padding: 10px; border:1px solid #cbd5e1; border-radius:4px; font-size: 16px;">
+                <button onclick="searchVisitorsByDate()" style="background:#0284c7; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">🔍 查詢當日資料</button>
+                <button onclick="sendDateMail()" style="background:#059669; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">📧 依此查詢發送郵件</button>
+                <button onclick="clearDateSearch()" style="background:#e2e8f0; color:#475569; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">✖ 取消</button>
+                <span id="searchStatus" style="margin-left: 10px; font-weight: bold; color: #64748b;"></span>
+            </div>
+            <div id="searchResultArea" style="margin-top: 20px; background: #f8fafc; border-radius: 8px; padding: 15px; border: 1px solid #e2e8f0; display: none;"></div>
+        </div>
+
+        <div class="chart-box">
+            <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="pieChart"></canvas>
+        </div>
+        <div style="width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+            <div class="chart-box-tall">
+                <canvas id="topCompanyChart_0" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topCompanyChart_1" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topCompanyChart_2" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topCompanyChart_3" height="300"></canvas>
+            </div>
+        </div>
+        <div style="width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:8px;">
+            <div class="chart-box-tall">
+                <canvas id="topDeptChart_0" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topDeptChart_1" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topDeptChart_2" height="300"></canvas>
+            </div>
+            <div class="chart-box-tall">
+                <canvas id="topDeptChart_3" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const columns = [
+            { key: 'timestamp', label: '填表時間', width: '280px' },
+            { key: 'leaveTime', label: '離廠時間', width: '100px' },
+            { key: 'company', label: '公司名稱', width: '180px' },
+            { key: 'name', label: '姓名', width: '100px' },
+            { key: 'phone', label: '手機號碼', width: '130px' },
+            { key: 'visitCompany', label: '欲拜訪公司', width: '140px' },
+            { key: 'visitUnit', label: '欲拜訪單位', width: '130px' },
+            { key: 'visitReason', label: '拜訪原因', width: '250px' },
+            { key: 'visitTarget', label: '欲拜訪對象', width: '120px' }
+        ];
+
+        let originalRows = [], rows = [], currentPage = 1, rowsPerPage = 20, sortCol = 'timestamp', sortAsc = false;
+        let currentGid = '1401484943';
+
+        window.onload = function () {
+            loadData(currentGid);
+        };
+
+        function loadTab(gid, element) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            element.classList.add('active');
+            currentGid = gid;
+            currentPage = 1;
+            loadData(gid);
+        }
+
+        function loadData(gid) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = '正在載入資料中，請稍候...';
+            document.getElementById('loading').style.color = '#004e92';
+            document.getElementById('dataTable').style.display = 'none';
+            document.getElementById('searchControls').style.display = 'none';
+            document.getElementById('paginationControls').style.display = 'none';
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(processData)
+                    .withFailureHandler(showError)
+                    .getSheetData(gid);
+            } else {
+                const url = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSG6BO-kJ_GZoqn-JbMLhC_mDmlJ-q_5eWL4gUFnpoIrfvFf0iJ2uk4r0eQGZ9sfFVqL5Dx_UrEVOjI/pub?output=csv&gid=${gid}`;
+                fetch(url)
+                    .then(res => res.text())
+                    .then(csvText => {
+                        const parsedData = parseCSVDirectly(csvText);
+                        processData(parsedData);
+                    })
+                    .catch(err => showError(err.message));
+            }
+        }
+
+        function parseCSVDirectly(text) {
+            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
+            for (l of text) {
+                if ('"' === l) {
+                    if (s && l === p) row[i] += l;
+                    s = !s;
+                } else if (',' === l && s) l = row[++i] = '';
+                else if ('\n' === l && s) {
+                    if ('\r' === p) row[i] = row[i].slice(0, -1);
+                    row = ret[++r] = [l = '']; i = 0;
+                } else row[i] += l;
+                p = l;
+            }
+            if (ret.length > 0 && ret[ret.length - 1].length === 1 && ret[ret.length - 1][0] === '') ret.pop();
+            return ret;
+        }
+
+        function processData(response) {
+            document.getElementById('loading').style.display = 'none';
+
+            let dataRows = [];
+
+            if (response && response.status === 'success') {
+                dataRows = response.data;
+            } else if (Array.isArray(response) && response.length > 0) {
+                const header = response[0];
+                const rawRows = response.slice(1);
+                
+                // 計算統計數據
+                const now = new Date();
+                const nowY = now.getFullYear();
+                const nowM = now.getMonth() + 1;
+                const nowD = now.getDate();
+                let todayCount = 0;
+
+                // 欄位自動辨識
+                const idxLeave = header.findIndex(h => h.includes('離場') || h.includes('離廠'));
+                const idxCompany = header.findIndex(h => h.includes('公司名稱') || (h.includes('公司') && !h.includes('拜訪')));
+                const idxName = header.findIndex(h => h.includes('姓名') && !h.includes('人'));
+                const idxPhone = header.findIndex(h => h.includes('手機') || h.includes('電話'));
+                const idxTargetCompany = header.findIndex(h => h.includes('欲拜訪公司'));
+                const idxTargetUnit = header.findIndex(h => h.includes('欲拜訪單位'));
+                const idxReason = header.findIndex(h => h.includes('原因') || h.includes('事由'));
+                const idxTargetPerson = header.findIndex(h => h.includes('拜訪對象') || h.includes('被訪者') || h.includes('受訪者'));
+
+                dataRows = rawRows.map(row => {
+                    const ts = row[0] || '';
+                    const match = ts.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+                    if (match && 
+                        parseInt(match[1], 10) === nowY && 
+                        parseInt(match[2], 10) === nowM && 
+                        parseInt(match[3], 10) === nowD) {
+                        todayCount++;
+                    }
+
+                    return {
+                        timestamp: row[0] || '',
+                        leaveTime: (idxLeave > -1 ? row[idxLeave] : (row[1] || '')),
+                        company: (idxCompany > -1 ? row[idxCompany] : (row[2] || '')),
+                        name: (idxName > -1 ? row[idxName] : (row[3] || '')),
+                        phone: (idxPhone > -1 ? row[idxPhone] : (row[4] || '')),
+                        visitCompany: (idxTargetCompany > -1 ? row[idxTargetCompany] : (row[5] || '')),
+                        visitUnit: (idxTargetUnit > -1 ? row[idxTargetUnit] : (row[6] || '')),
+                        visitReason: (idxReason > -1 ? row[idxReason] : (row[7] || '')),
+                        visitTarget: (idxTargetPerson > -1 ? row[idxTargetPerson] : (row[8] || ''))
+                    };
+                });
+
+                document.getElementById('todayCount').innerText = todayCount;
+                document.getElementById('totalCount').innerText = dataRows.length;
+            }
+
+            if (dataRows.length > 0) {
+                document.getElementById('dataTable').style.display = 'table';
+                document.getElementById('searchControls').style.display = 'flex';
+                document.getElementById('paginationControls').style.display = 'flex';
+                originalRows = dataRows;
+                document.getElementById('searchInput').value = '';
+                document.getElementById('dateInput').value = '';
+                rows = [...originalRows];
+                sortCol = 'timestamp';
+                sortAsc = false;
+                sortData('timestamp', true); 
+            } else {
+                showError(response && response.message ? response.message : "此分頁目前沒有資料。");
+            }
+        }
+
+        function clearDate() {
+            document.getElementById('dateInput').value = '';
+            searchData();
+        }
+
+        function searchData() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const dateQuery = document.getElementById('dateInput').value;
+
+            let filtered = originalRows;
+
+            if (dateQuery) {
+                filtered = filtered.filter(row => {
+                    const ts = row.timestamp;
+                    if (!ts) return false;
+                    const parts = ts.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+                    if (parts) {
+                        const [, y, m, d] = parts;
+                        const rowDateStr = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+                        return rowDateStr === dateQuery;
+                    }
+                    return false;
+                });
+            }
+
+            if (query) {
+                filtered = filtered.filter(row => {
+                    return Object.values(row).some(val => 
+                        String(val).toLowerCase().includes(query)
+                    );
+                });
+            }
+
+            rows = filtered;
+            
+            // 更新計數器
+            if (dateQuery) {
+                // 如果有過濾日期，左邊顯示「該日人數」
+                document.getElementById('statLabelToday').innerText = '📅 所選日期訪客：';
+                document.getElementById('todayCount').innerText = filtered.length;
+            } else if (query) {
+                // 如果只有關鍵字搜尋，左邊顯示「搜尋結果」
+                document.getElementById('statLabelToday').innerText = '🔍 搜尋結果筆數：';
+                document.getElementById('todayCount').innerText = filtered.length;
+            } else {
+                // 什麼都沒選，左邊恢復顯示真正的「今日」數量
+                document.getElementById('statLabelToday').innerText = '📅 今日訪客：';
+                const now = new Date();
+                const nowY = now.getFullYear(), nowM = now.getMonth() + 1, nowD = now.getDate();
+                const todayOnly = originalRows.filter(r => {
+                    const m = (r.timestamp||'').match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+                    return m && parseInt(m[1])===nowY && parseInt(m[2])===nowM && parseInt(m[3])===nowD;
+                }).length;
+                document.getElementById('todayCount').innerText = todayOnly;
+            }
+
+            // 右邊永遠顯示該廠區資料庫總筆數，不隨篩選改變
+            document.getElementById('statLabelTotal').innerText = '📊 總計訪客：';
+            document.getElementById('totalCount').innerText = originalRows.length;
+
+            if (sortCol) {
+                sortData(sortCol, true);
+            } else {
+                currentPage = 1;
+                renderTable();
+                updatePagination();
+            }
+        }
+
+        function showError(error) {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.innerText = "發生錯誤: " + error;
+            loadingEl.style.color = "red";
+            loadingEl.style.display = 'block';
+        }
+
+        function renderHeaders() {
+            const tr = document.getElementById('tableHead');
+            tr.innerHTML = '';
+            
+            const thNo = document.createElement('th');
+            thNo.innerText = 'NO.';
+            thNo.style.width = '60px'; /* Keep NO. column fixed at 60px */
+            thNo.style.textAlign = 'center';
+            tr.appendChild(thNo);
+
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.style.width = col.width; /* Apply dynamic exact width */
+                let arrow = '<span style="color:#aaa; font-size:12px; margin-left:5px;">↕</span>';
+                if (sortCol === col.key) {
+                    arrow = sortAsc ? '<span style="margin-left:5px;">▲</span>' : '<span style="margin-left:5px;">▼</span>';
+                }
+                th.innerHTML = col.label + arrow;
+                th.onclick = () => sortData(col.key);
+                tr.appendChild(th);
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            const start = (currentPage - 1) * rowsPerPage;
+            const paginatedRows = rows.slice(start, start + rowsPerPage);
+
+            if (paginatedRows.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = columns.length + 1; /* Add 1 for the NO. column */
+                td.innerText = "沒有符合的資料";
+                td.style.textAlign = 'center';
+                td.style.padding = '20px';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            } else {
+                paginatedRows.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    
+                    const tdNo = document.createElement('td');
+                    tdNo.innerText = start + index + 1;
+                    tdNo.style.textAlign = 'center';
+                    tdNo.style.fontWeight = 'bold';
+                    tdNo.style.color = '#004e92';
+                    tr.appendChild(tdNo);
+
+                    columns.forEach(col => {
+                        const td = document.createElement('td');
+                        const textData = row[col.key] || '';
+                        td.innerText = textData;
+                        td.title = textData; /* Provide full hover tooltip for truncated text */
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+            }
+            updatePagination();
+        }
+
+        const parseCustomTime = (str) => {
+            if (!str) return 0;
+            let parts = str.match(/(\d{4}\/\d{1,2}\/\d{1,2})\s+(上午|下午)\s+(\d{1,2}):(\d{1,2}):(\d{1,2})/);
+            if (parts) {
+                let dateStr = parts[1];
+                let ampm = parts[2];
+                let h = parseInt(parts[3], 10);
+                if (ampm === '下午' && h < 12) h += 12;
+                if (ampm === '上午' && h === 12) h = 0;
+                return new Date(`${dateStr} ${h}:${parts[4]}:${parts[5]}`).getTime();
+            }
+            const fallback = new Date(str).getTime();
+            return isNaN(fallback) ? 0 : fallback;
+        };
+
+        function sortData(key, triggerRenderOnly = false) {
+            if (!triggerRenderOnly) {
+                if (sortCol === key) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortCol = key;
+                    if (key === 'timestamp') sortAsc = false;
+                    else sortAsc = true;
+                }
+            }
+
+            if (sortCol) {
+                rows.sort((a, b) => {
+                    let valA = a[sortCol] || '', valB = b[sortCol] || '';
+
+                    if (sortCol === 'timestamp') {
+                        let timeA = parseCustomTime(valA);
+                        let timeB = parseCustomTime(valB);
+                        if (timeA && timeB) {
+                            return sortAsc ? timeA - timeB : timeB - timeA;
+                        }
+                    }
+
+                    const numA = Number(valA), numB = Number(valB);
+                    if (!isNaN(numA) && !isNaN(numB) && valA.toString().trim() !== '' && valB.toString().trim() !== '') {
+                        valA = numA; valB = numB;
+                    }
+                    if (valA < valB) return sortAsc ? -1 : 1;
+                    if (valA > valB) return sortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            if (!triggerRenderOnly) {
+                currentPage = 1;
+            }
+            renderHeaders();
+            renderTable();
+        }
+
+        function changePage(action) {
+            const totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
+            
+            if (action === 'first') {
+                currentPage = 1;
+            } else if (action === 'last') {
+                currentPage = totalPages;
+            } else if (typeof action === 'number') {
+                currentPage += action;
+            }
+
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderTable();
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(rows.length / rowsPerPage) || 1;
+            document.getElementById('pageInfo').innerText = `第 ${currentPage} 頁，共 ${totalPages} 頁 (總共 ${rows.length} 筆)`;
+            document.getElementById('btnFirst').disabled = (currentPage === 1);
+            document.getElementById('btnPrev').disabled = (currentPage === 1);
+            document.getElementById('btnNext').disabled = (currentPage === totalPages);
+            document.getElementById('btnLast').disabled = (currentPage === totalPages);
+        }
+
+        // =======================
+        // ADMIN DASHBOARD & API LOGIC
+        // =======================
+
+        function toggleAdmin() {
+            const mainContainer = document.getElementById('mainContainer');
+            const adminDashboard = document.getElementById('adminDashboard');
+            const mainTabs = document.getElementById('mainTabs');
+            const isAdminVisible = adminDashboard.style.display === 'flex';
+            if (isAdminVisible) {
+                adminDashboard.style.display = 'none';
+                mainContainer.style.display = 'block';
+                mainTabs.style.display = 'flex';
+            } else {
+                adminDashboard.style.display = 'flex';
+                mainContainer.style.display = 'none';
+                mainTabs.style.display = 'none';
+                fetchMailConfig();
+                loadAdminData();
+            }
+        }
+
+        // ====== GAS WEB APP URL CONFIGURATION ======
+        // 若您在遠端伺服器 (如 Nginx) 執行此網頁，請將部署好的 Apps Script 網址貼在下方：
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyaNWg32bebSinZ6LKitUh5rJJQVbwJUJRGhGYKubV7K5sVeVBPWbH5V8d6XxYDYi9x/exec';
+        
+        async function execGasApi(action, formData) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // 原生 GAS 部署環境
+                return new Promise((resolve, reject) => {
+                    if (action === 'get_config') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getMailConfig();
+                    if (action === 'save_config') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveMailConfig(formData.get('recipients'), formData.get('time'));
+                    if (action === 'test_mail') google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).triggerTestEmail(formData.get('recipients'));
+                });
+            } else {
+                // Nginx / 外部環境：改用 GET + 查詢字串，避免 GAS POST redirect 跨域 body 遺失
+                if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('請貼上')) {
+                    throw new Error('未設定 GAS_WEB_APP_URL！');
+                }
+                const urlParams = new URLSearchParams({ action });
+                for (let [key, value] of formData.entries()) {
+                    urlParams.append(key, value);
+                }
+                const res = await fetch(`${GAS_WEB_APP_URL}?${urlParams.toString()}`);
+                const raw = await res.text();
+                console.log('[GAS RAW RESPONSE]', raw);
+                try {
+                    return JSON.parse(raw);
+                } catch(parseErr) {
+                    // GAS returned non-JSON (e.g. HTML login page or error page)
+                    throw new Error('GAS 回傳非 JSON 內容，請確認：\n1. 已重新部署為「新版本」\n2. 存取權限設為「所有人 (Anyone)」\n內容預覽：' + raw.substring(0, 200));
+                }
+            }
+        }
+
+        async function fetchMailConfig() {
+            try {
+                let conf;
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    conf = await execGasApi('get_config');
+                } else {
+                    const res = await fetch(GAS_WEB_APP_URL + '?action=get_config');
+                    conf = await res.json();
+                }
+                document.getElementById('mailRecipients').value = conf.recipients || 'ange.wu@ycgroup.tw';
+                document.getElementById('mailTime').value = conf.time || '08:00';
+            } catch(e) { console.warn('無法載入設定: ' + e.message); }
+        }
+
+        async function saveMailConfig() {
+            const time = document.getElementById('mailTime').value;
+            const recs = document.getElementById('mailRecipients').value;
+            const status = document.getElementById('mailStatus');
+            status.innerText = '⏳ 正在儲存至 Google 雲端...';
+
+            try {
+                const formData = new FormData();
+                formData.append('time', time);
+                formData.append('recipients', recs);
+
+                const data = await execGasApi('save_config', formData);
+                if (data.success) {
+                    status.innerText = '✅ ' + (data.message || '設定已成功儲存！');
+                } else {
+                    status.innerText = '❌ 錯誤: ' + data.error;
+                }
+            } catch(e) {
+                status.innerText = '❌ 錯誤: ' + String(e);
+            }
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function testMail() {
+            const status = document.getElementById('mailStatus');
+            const recs = document.getElementById('mailRecipients').value;
+            status.innerText = '⏳ 正在由 Google Apps 伺服器分析並寄出報表...';
+            console.log('[testMail] 收件人:', recs);
+            console.log('[testMail] 使用 GAS URL:', GAS_WEB_APP_URL);
+
+            try {
+                const formData = new FormData();
+                formData.append('recipients', recs);
+
+                const data = await execGasApi('test_mail', formData);
+                console.log('[testMail] GAS 回傳結果:', JSON.stringify(data));
+                if (data.success) {
+                    status.innerText = '✅ ' + (data.message || '郵件已成功發送！');
+                } else {
+                    status.innerText = '❌ 錯誤: ' + data.error;
+                }
+            } catch(e) {
+                status.innerText = '❌ 錯誤: ' + String(e);
+            }
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        function clearDateSearch() {
+            document.getElementById('searchDateInput').value = '';
+            document.getElementById('searchStatus').innerText = '';
+            const resultArea = document.getElementById('searchResultArea');
+            resultArea.innerHTML = '';
+            resultArea.style.display = 'none';
+        }
+
+        async function searchVisitorsByDate() {
+            const dateInput = document.getElementById('searchDateInput').value;
+            const resultArea = document.getElementById('searchResultArea');
+            const status = document.getElementById('searchStatus');
+            
+            if (!dateInput) {
+                alert('請先選擇日期');
+                return;
+            }
+
+            const targetDate = dateInput.replace(/-/g, '/');
+            status.innerText = '⌛ 正在從全廠區資料庫檢索 ' + targetDate + ' 的訪客資料...';
+            resultArea.innerHTML = '';
+            resultArea.style.display = 'block';
+
+            const allSheets = [
+                { name: '內湖', gid: '1401484943' },
+                { name: '楊梅', gid: '930740199' },
+                { name: '彰濱薄膜', gid: '412432769' },
+                { name: '彰濱膠帶', gid: '545698913' }
+            ];
+
+            let html = `<h2 style="color:#004e92; margin-top:0;">📅 ${targetDate} 全廠區訪客明細回報</h2>`;
+            let totalFound = 0;
+
+            for (let sheet of allSheets) {
+                try {
+                    const url = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSG6BO-kJ_GZoqn-JbMLhC_mDmlJ-q_5eWL4gUFnpoIrfvFf0iJ2uk4r0eQGZ9sfFVqL5Dx_UrEVOjI/pub?output=csv&gid=${sheet.gid}`;
+                    const res = await fetch(url);
+                    const csvText = await res.text();
+                    const parsed = parseCSVDirectly(csvText);
+                    
+                    const [y, m, d] = dateInput.split('-').map(Number);
+                    const filteredRows = parsed.filter((row, idx) => {
+                        if (idx === 0) return false;
+                        const ts = row[0] || '';
+                        const match = ts.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+                        if (!match) return false;
+                        return parseInt(match[1], 10) === y && 
+                               parseInt(match[2], 10) === m && 
+                               parseInt(match[3], 10) === d;
+                    });
+
+                    totalFound += filteredRows.length;
+
+                    html += `
+                        <div style="background:white; border-radius:8px; padding:15px; margin-bottom:15px; border:1px solid #e2e8f0;">
+                            <h3 style="margin-top:0; color:#0369a1; border-left:4px solid #0369a1; padding-left:10px;">🏭 ${sheet.name}廠 (${filteredRows.length} 筆)</h3>
+                    `;
+
+                    if (filteredRows.length === 0) {
+                        html += `<p style="color:#94a3b8; margin:0;">該日無訪客記錄</p>`;
+                    } else {
+                        html += `
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; font-size: 14px; table-layout: auto; min-width: unset;">
+                                    <thead>
+                                        <tr style="background:#f1f5f9; text-align:left;">
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap; width:36px; text-align:center;">#</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">時間</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">姓名</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">手機</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">訪客公司</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">拜訪公司</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">拜訪單位</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">受訪者</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">事由</th>
+                                            <th style="padding:10px; border:1px solid #e2e8f0; white-space:nowrap;">離場</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
+                        const header = parsed[0] || [];
+                        const idxTime = 0;
+                        const idxName = header.findIndex(h => h.includes('姓名') && !h.includes('被訪'));
+                        const idxPhone = header.findIndex(h => h.includes('手機') || h.indexOf('電話') > -1);
+                        const idxVCompany = header.findIndex(h => h.includes('公司') && !h.includes('欲拜訪'));
+                        const idxTCompany = header.findIndex(h => h.includes('欲拜訪公司'));
+                        const idxTUnit = header.findIndex(h => h.includes('欲拜訪單位'));
+                        const idxTarget = header.findIndex(h => (h.includes('被訪') && h.includes('人')) || h.includes('對象') || h.includes('受訪者'));
+                        const idxReason = header.findIndex(h => h.includes('事由') || h.includes('原因'));
+                        const idxLeave = header.findIndex(h => h.includes('離場') || h.includes('離廠'));
+
+                        filteredRows.forEach((row, rowIdx) => {
+                            const c0 = row[idxTime] || '-';
+                            const c1 = (idxName > -1 ? row[idxName] : row[3]) || '-';
+                            const c2 = (idxPhone > -1 ? row[idxPhone] : row[4]) || '-';
+                            const c3 = (idxVCompany > -1 ? row[idxVCompany] : row[2]) || '-';
+                            const c4 = (idxTCompany > -1 ? row[idxTCompany] : row[5]) || '-';
+                            const c5 = (idxTUnit > -1 ? row[idxTUnit] : row[6]) || '-';
+                            const c6 = (idxTarget > -1 ? row[idxTarget] : row[8]) || '-';
+                            const c7 = (idxReason > -1 ? row[idxReason] : row[7]) || '-';
+                            const c8 = (idxLeave > -1 ? row[idxLeave] : row[1]) || '-';
+                            const tdBase = 'padding:10px; border:1px solid #e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; cursor:default;';
+                            const tdReason = 'padding:10px; border:1px solid #e2e8f0; overflow:hidden; text-overflow:ellipsis; max-width:220px; cursor:default;';
+                            html += `
+                                <tr>
+                                    <td style="padding:10px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8; width:36px;">${rowIdx + 1}</td>
+                                    <td style="${tdBase} max-width:130px;" title="${c0}">${c0}</td>
+                                    <td style="${tdBase} font-weight:bold;" title="${c1}">${c1}</td>
+                                    <td style="${tdBase}" title="${c2}">${c2}</td>
+                                    <td style="${tdBase}" title="${c3}">${c3}</td>
+                                    <td style="${tdBase}" title="${c4}">${c4}</td>
+                                    <td style="${tdBase}" title="${c5}">${c5}</td>
+                                    <td style="${tdBase}" title="${c6}">${c6}</td>
+                                    <td style="${tdReason}" title="${c7}">${c7}</td>
+                                    <td style="${tdBase}" title="${c8}">${c8}</td>
+                                </tr>
+                            `;
+                        });
+
+                        html += `</tbody></table></div>`;
+                    }
+                    html += `</div>`;
+                } catch(e) {
+                    console.error('Error fetching ' + sheet.name, e);
+                    html += `<div style="color:red; margin-bottom:10px;">❌ 廠區 ${sheet.name} 資料讀取失敗</div>`;
+                }
+            }
+
+            resultArea.innerHTML = html;
+            status.innerText = '✅ 查詢完成，共尋獲 ' + totalFound + ' 筆資料';
+        }
+
+        async function sendDateMail() {
+            const dateInput = document.getElementById('searchDateInput').value;
+            const status = document.getElementById('searchStatus');
+            const recipients = document.getElementById('mailRecipients').value;
+
+            if (!dateInput) {
+                alert('請先選擇日期！');
+                return;
+            }
+
+            if (!confirm(`確定要補發 ${dateInput} 的訪客明細郵件給 ${recipients || '設定收件人'} 嗎？`)) {
+                return;
+            }
+
+            status.innerText = '🚀 正在補發郵件中...';
+            
+            try {
+                const url = `https://script.google.com/macros/s/AKfycbyaNWg32bebSinZ6LKitUh5rJJQVbwJUJRGhGYKubV7K5sVeVBPWbH5V8d6XxYDYi9x/exec?action=send_date_mail&date=${dateInput}&recipients=${encodeURIComponent(recipients)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.success) {
+                    status.innerText = '✅ ' + data.message;
+                    setTimeout(() => status.innerText = '', 5000);
+                } else {
+                    status.innerText = '❌ 發送失敗：' + data.error;
+                }
+            } catch (e) {
+                status.innerText = '❌ 網路錯誤：' + e.message;
+            }
+        }
+
+        let barChartInst = null;
+        let pieChartInst = null;
+        let companyChartInsts = [null, null, null, null];
+        let deptChartInsts = [null, null, null, null];
+
+        async function loadAdminData() {
+            const allSheets = [
+                { name: '內湖', gid: '1401484943' },
+                { name: '楊梅', gid: '930740199' },
+                { name: '彰濱薄膜', gid: '412432769' },
+                { name: '彰濱膠帶', gid: '545698913' }
+            ];
+            
+            let stats = {
+                labels: [],
+                counts: [],
+                reasons: {},
+                companiesByFactory: [],
+                deptsByFactory: []
+            };
+
+            for (let sheet of allSheets) {
+                const factoryCompanies = {};
+                const factoryDepts = {};
+                try {
+                    const url = `https://docs.google.com/spreadsheets/d/e/2PACX-1vSG6BO-kJ_GZoqn-JbMLhC_mDmlJ-q_5eWL4gUFnpoIrfvFf0iJ2uk4r0eQGZ9sfFVqL5Dx_UrEVOjI/pub?output=csv&gid=${sheet.gid}`;
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 避免過快請求被 Google 暫時封鎖
+                    const res = await fetch(url);
+                    const csvText = await res.text();
+                    console.log(`[loadAdminData] Factory: ${sheet.name}, GID: ${sheet.gid}, CSV Length: ${csvText.length}`);
+                    const parsed = parseCSVDirectly(csvText);
+                    const rowCount = parsed.length > 1 ? parsed.length - 1 : 0;
+                    console.log(`[loadAdminData] Factory: ${sheet.name}, GID: ${sheet.gid}, RowCount: ${rowCount}`);
+                    
+                    stats.labels.push(sheet.name);
+                    stats.counts.push(rowCount);
+
+                    const header = parsed[0] || [];
+                    console.log(`[loadAdminData] CSV Header (${sheet.name}):`, header);
+                    
+                    // 欲拜訪公司（優先比對「欲拜訪」+「公司」，避免抓到訪客公司名稱）
+                    let idxCompany = header.findIndex(h => h.includes('欲拜訪') && h.includes('公司'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('欲拜訪') && h.includes('單位'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('拜訪公司'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司') && !h.includes('名稱'));
+
+                    // 受訪者 / 被訪問單位人員（優先比對最精確的欄位）
+                    let idxName = header.findIndex(h => h.includes('受訪'));
+                    if (idxName === -1) idxName = header.findIndex(h => h.includes('被訪') && h.includes('人'));
+                    if (idxName === -1) idxName = header.findIndex(h => h.includes('對象'));
+                    if (idxName === -1) idxName = header.findIndex(h => h.includes('欲拜訪') && (h.includes('單位') || h.includes('人員')));
+
+                    const idxReason = header.findIndex(h => h.includes('事由') || h.includes('目的'));
+                    
+                    console.log(`[loadAdminData] Detected Indices: Company=${idxCompany}, Dept/Host=${idxName}, Reason=${idxReason}`);
+
+                    for (let i = 1; i < parsed.length; i++) {
+                        const row = parsed[i];
+                        const company = (idxCompany > -1 ? row[idxCompany] : (row[2] || '')) || '未填寫/其他';
+                        const dept = (idxName > -1 ? row[idxName] : (row[3] || '')) || '未填寫/其他';
+                        const reason = (idxReason > -1 ? row[idxReason] : (row[7] || '')) || '未填寫/其他';
+                        
+                        stats.reasons[reason] = (stats.reasons[reason] || 0) + 1;
+                        if (company && company !== '未填寫/其他') factoryCompanies[company] = (factoryCompanies[company] || 0) + 1;
+                        if (dept && dept !== '未填寫/其他') factoryDepts[dept] = (factoryDepts[dept] || 0) + 1;
+                    }
+                } catch(e) {
+                    console.error('Failed to load '+sheet.name, e);
+                    stats.labels.push(sheet.name);
+                    stats.counts.push(0);
+                }
+                stats.companiesByFactory.push({ name: sheet.name, companies: factoryCompanies });
+                stats.deptsByFactory.push({ name: sheet.name, depts: factoryDepts });
+            }
+            
+            console.log('[loadAdminData] Final Stats:', JSON.stringify(stats));
+            drawAdminCharts(stats);
+        }
+
+        function drawAdminCharts(stats) {
+            if (barChartInst) barChartInst.destroy();
+            if (pieChartInst) pieChartInst.destroy();
+            companyChartInsts.forEach(c => { if (c) c.destroy(); });
+            deptChartInsts.forEach(c => { if (c) c.destroy(); });
+            companyChartInsts = [null, null, null, null];
+            deptChartInsts = [null, null, null, null];
+
+            // 1. Bar Chart: Total counts by location
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChartInst = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: stats.labels,
+                    datasets: [{
+                        label: '各廠區總訪客人數',
+                        data: stats.counts,
+                        backgroundColor: '#004e92',
+                        borderColor: '#003366',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: '各廠區總累積訪客人數', font: {size: 16} }
+                    }
+                }
+            });
+
+            // 2. Pie Chart: Visit Reasons
+            const pieLabels = Object.keys(stats.reasons);
+            const pieData = Object.values(stats.reasons);
+            const bgColors = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#f77825', '#9966ff', '#8b5cf6'];
+
+            const pieCtx = document.getElementById('pieChart').getContext('2d');
+            pieChartInst = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: pieLabels,
+                    datasets: [{
+                        data: pieData,
+                        backgroundColor: bgColors.slice(0, Math.max(pieLabels.length, bgColors.length))
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: '核心拜訪原因分佈比例', font: {size: 16} },
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // 3. Per-Factory Top Company Charts
+            const factoryColors = ['#004e92', '#10b981', '#f59e0b', '#ef4444'];
+            stats.companiesByFactory.forEach((factory, idx) => {
+                const sorted = Object.entries(factory.companies)
+                    .filter(x => x[0] !== '未填寫/其他' && x[0] !== '')
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                const ctx = document.getElementById(`topCompanyChart_${idx}`).getContext('2d');
+                companyChartInsts[idx] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sorted.map(x => x[0]),
+                        datasets: [{
+                            label: '來訪次數',
+                            data: sorted.map(x => x[1]),
+                            backgroundColor: factoryColors[idx],
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: `${factory.name} - Top 5 最常拜訪來源`, font: {size: 14} }
+                        }
+                    }
+                });
+            });
+
+            // 4. Per-Factory Top Dept/Host Charts
+            const deptColors = ['#7c3aed', '#db2777', '#0891b2', '#65a30d'];
+            stats.deptsByFactory.forEach((factory, idx) => {
+                const sorted = Object.entries(factory.depts)
+                    .filter(x => x[0] !== '未填寫/其他' && x[0] !== '')
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                const ctx = document.getElementById(`topDeptChart_${idx}`).getContext('2d');
+                deptChartInsts[idx] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sorted.map(x => x[0]),
+                        datasets: [{
+                            label: '被拜訪次數',
+                            data: sorted.map(x => x[1]),
+                            backgroundColor: deptColors[idx],
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: `${factory.name} - Top 5 最常被訪問單位/人員`, font: {size: 14} }
+                        }
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>
