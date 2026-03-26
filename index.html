@@ -515,7 +515,10 @@
 
                 // 欄位自動辨識
                 const idxLeave = header.findIndex(h => h.includes('離場') || h.includes('離廠'));
-                const idxCompany = header.findIndex(h => h.includes('公司名稱') || (h.includes('公司') && !h.includes('拜訪')));
+                let idxCompany = header.findIndex(h => h.includes('您的公司'));
+                if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司名稱'));
+                if (idxCompany === -1) idxCompany = header.findIndex(h => (h.includes('訪客') || h.includes('來訪')) && h.includes('公司'));
+                if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司') && !h.includes('拜訪') && !h.includes('單位'));
                 const idxName = header.findIndex(h => h.includes('姓名') && !h.includes('人'));
                 const idxPhone = header.findIndex(h => h.includes('手機') || h.includes('電話'));
                 const idxTargetCompany = header.findIndex(h => h.includes('欲拜訪公司'));
@@ -985,7 +988,10 @@
                         const idxTime = 0;
                         const idxName = header.findIndex(h => h.includes('姓名') && !h.includes('被訪'));
                         const idxPhone = header.findIndex(h => h.includes('手機') || h.indexOf('電話') > -1);
-                        const idxVCompany = header.findIndex(h => h.includes('公司') && !h.includes('欲拜訪'));
+                        let idxVCompany = header.findIndex(h => h.includes('您的公司'));
+                        if (idxVCompany === -1) idxVCompany = header.findIndex(h => h.includes('公司名稱'));
+                        if (idxVCompany === -1) idxVCompany = header.findIndex(h => (h.includes('訪客') || h.includes('來訪')) && h.includes('公司'));
+                        if (idxVCompany === -1) idxVCompany = header.findIndex(h => h.includes('公司') && !h.includes('欲拜訪') && !h.includes('拜訪公司') && !h.includes('單位'));
                         const idxTCompany = header.findIndex(h => h.includes('欲拜訪公司'));
                         const idxTUnit = header.findIndex(h => h.includes('欲拜訪單位'));
                         const idxTarget = header.findIndex(h => (h.includes('被訪') && h.includes('人')) || h.includes('對象') || h.includes('受訪者'));
@@ -1105,11 +1111,11 @@
                     const header = parsed[0] || [];
                     console.log(`[loadAdminData] CSV Header (${sheet.name}):`, header);
                     
-                    // 欲拜訪公司（優先比對「欲拜訪」+「公司」，避免抓到訪客公司名稱）
-                    let idxCompany = header.findIndex(h => h.includes('欲拜訪') && h.includes('公司'));
-                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('欲拜訪') && h.includes('單位'));
-                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('拜訪公司'));
-                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司') && !h.includes('名稱'));
+                    // 訪客來源公司，避免誤抓成欲拜訪公司/單位
+                    let idxCompany = header.findIndex(h => h.includes('您的公司'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司名稱'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => (h.includes('訪客') || h.includes('來訪')) && h.includes('公司'));
+                    if (idxCompany === -1) idxCompany = header.findIndex(h => h.includes('公司') && !h.includes('欲拜訪') && !h.includes('拜訪公司') && !h.includes('單位'));
 
                     // 受訪者 / 被訪問單位人員（優先比對最精確的欄位）
                     let idxName = header.findIndex(h => h.includes('受訪'));

@@ -152,7 +152,10 @@ function fetchStatsHtml(targetDateStr) {
               var h = header[k];
               if (h.indexOf('姓名') > -1 && h.indexOf('被訪') === -1) idxName = k;
               if (h.indexOf('手機') > -1 || h.indexOf('碼') > -1) idxPhone = k;
-              if (h.indexOf('公司名稱') > -1 || (h.indexOf('公司') > -1 && h.indexOf('欲拜訪') === -1)) idxVCompany = k;
+              if (h.indexOf('您的公司') > -1) idxVCompany = k;
+              else if (h.indexOf('公司名稱') > -1) idxVCompany = k;
+              else if ((h.indexOf('訪客') > -1 || h.indexOf('來訪') > -1) && h.indexOf('公司') > -1) idxVCompany = k;
+              else if (h.indexOf('公司') > -1 && h.indexOf('欲拜訪') === -1 && h.indexOf('拜訪公司') === -1 && h.indexOf('單位') === -1) idxVCompany = k;
               if (h.indexOf('欲拜訪公司') > -1) idxTCompany = k;
               if (h.indexOf('欲拜訪單位') > -1) idxTUnit = k;
               if ((h.indexOf('被訪') > -1 && h.indexOf('人') > -1) || h.indexOf('對象') > -1 || h.indexOf('受訪者') > -1) idxTarget = k;
