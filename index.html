@@ -300,7 +300,7 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             flex: 1 1 calc(50% - 15px);
             min-width: 280px;
-            max-height: 380px;
+            min-height: 500px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -639,9 +639,11 @@
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center;">
                 <button class="admin-action-btn" onclick="saveMailConfig()" style="background:#004e92; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">💾 儲存設定</button>
                 <button class="admin-action-btn" onclick="testMail()" style="background:#64748b; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">🚀 發送測試信</button>
+                <button class="admin-action-btn" onclick="forceSend()" style="background:#dc2626; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">📧 強制立即寄出</button>
                 <span id="triggerStatus" style="padding:5px 12px; border-radius:4px; font-size:13px; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; display:none;"></span>
                 <span id="mailStatus" style="color:#059669; font-weight:bold; font-size:14px;"></span>
             </div>
+            <div id="triggerError" style="display:none; margin-top:8px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:4px; color:#991b1b; font-size:13px;"></div>
         </div>
 
         <!-- NEW DATE SEARCH SECTION -->
@@ -1140,6 +1142,18 @@
                         triggerEl.style.color = '#991b1b';
                         triggerEl.innerHTML = '❌ 排程未啟用 — 請點「儲存設定」建立';
                     }
+                    // 顯示觸發器最後執行時間
+                    if (conf.lastTriggerRun) {
+                        triggerEl.innerHTML += '<br>⏱ 觸發器最後執行：' + conf.lastTriggerRun;
+                    }
+                }
+                // 顯示錯誤訊息
+                var errorEl = document.getElementById('triggerError');
+                if (errorEl && conf.lastError) {
+                    errorEl.style.display = 'block';
+                    errorEl.innerHTML = '⚠️ 最後錯誤：' + conf.lastError + ' <a href="javascript:void(0)" onclick="clearError()" style="color:#2563eb;text-decoration:underline;margin-left:8px;">清除</a>';
+                } else if (errorEl) {
+                    errorEl.style.display = 'none';
                 }
             } catch(e) { console.warn('無法載入設定: ' + e.message); }
         }
@@ -1189,6 +1203,33 @@
                 status.innerText = '❌ 錯誤: ' + String(e);
             }
             setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function forceSend() {
+            const status = document.getElementById('mailStatus');
+            const recs = document.getElementById('mailRecipients').value;
+            if (!confirm('確定要強制立即寄出今日報表嗎？')) return;
+            status.innerText = '⏳ 正在強制寄出...';
+            try {
+                const res = await fetch(GAS_WEB_APP_URL + '?action=force_send&recipients=' + encodeURIComponent(recs));
+                const data = await res.json();
+                if (data.success) {
+                    status.innerText = '✅ ' + data.message;
+                    fetchMailConfig();
+                } else {
+                    status.innerText = '❌ ' + data.error;
+                }
+            } catch(e) {
+                status.innerText = '❌ 錯誤: ' + String(e);
+            }
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function clearError() {
+            try {
+                await fetch(GAS_WEB_APP_URL + '?action=clear_error');
+                fetchMailConfig();
+            } catch(e) { console.warn(e); }
         }
 
         function clearDateSearch() {

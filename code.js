@@ -26,6 +26,20 @@ function doGet(e) {
             return jsonOut(result);
         }
 
+        if (action === 'force_send') {
+            // 強制立即寄出（忽略今日已寄過的檢查）
+            var recipients = e.parameter.recipients || '';
+            var result = forceSendNow(recipients);
+            return jsonOut(result);
+        }
+
+        if (action === 'clear_error') {
+            var props = PropertiesService.getScriptProperties();
+            props.deleteProperty('LAST_ERROR');
+            props.deleteProperty('LAST_SENT_DATE');
+            return jsonOut({ success: true, message: '已清除錯誤紀錄與今日寄送標記' });
+        }
+
         // Default: fetch CSV sheet data
         var defaultGid = '1401484943';
         var targetGid = e && e.parameter && e.parameter.gid ? e.parameter.gid : defaultGid;
@@ -62,7 +76,7 @@ function getMailConfig() {
         var triggers = ScriptApp.getProjectTriggers();
         for (var i = 0; i < triggers.length; i++) {
             var handler = triggers[i].getHandlerFunction();
-            if (handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
+            if (handler === 'scheduledCheckAndSend' || handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
                 hasTrigger = true;
                 triggerCount++;
             }
@@ -73,7 +87,9 @@ function getMailConfig() {
         time: props.getProperty('MAIL_TIME') || '16:50',
         triggerActive: hasTrigger,
         triggerCount: triggerCount,
-        lastSent: props.getProperty('LAST_SENT_DATETIME') || props.getProperty('LAST_SENT_DATE') || '尚未寄出'
+        lastSent: props.getProperty('LAST_SENT_DATETIME') || props.getProperty('LAST_SENT_DATE') || '尚未寄出',
+        lastError: props.getProperty('LAST_ERROR') || '',
+        lastTriggerRun: props.getProperty('LAST_TRIGGER_RUN') || ''
     };
 }
 
@@ -83,8 +99,8 @@ function saveMailConfig(recipients, timeString) {
         if (recipients) props.setProperty('MAIL_RECIPIENTS', recipients);
         if (timeString) props.setProperty('MAIL_TIME', timeString);
 
-        // 自動建立每日精確時間觸發器
-        var triggerMsg = ensureDailyTrigger(timeString);
+        // 自動建立每10分鐘檢查觸發器
+        var triggerMsg = ensureIntervalTrigger();
 
         return { success: true, message: '設定已儲存！收件人: ' + recipients + '，每日 ' + timeString + ' 自動寄出。' + triggerMsg };
     } catch(e) {
@@ -93,92 +109,96 @@ function saveMailConfig(recipients, timeString) {
 }
 
 /**
- * 根據設定的時間建立每日精確觸發器。
- * 會先刪除舊的排程觸發器，再建立新的。
+ * 建立每10分鐘執行一次的檢查觸發器（取代不穩定的 onWeekDay 觸發器）。
+ * 只需要 1 個觸發器，每次執行檢查時間是否到了。
  */
-function ensureDailyTrigger(timeString) {
+function ensureIntervalTrigger() {
     try {
         // 刪除所有舊的排程觸發器
         var triggers = ScriptApp.getProjectTriggers();
         for (var i = 0; i < triggers.length; i++) {
             var handler = triggers[i].getHandlerFunction();
-            if (handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
+            if (handler === 'scheduledCheckAndSend' || handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
                 ScriptApp.deleteTrigger(triggers[i]);
             }
         }
 
-        // 解析時間
-        var parts = timeString.split(':');
-        var hour = parseInt(parts[0], 10);
-        var minute = parseInt(parts[1], 10) || 0;
+        // 建立每10分鐘執行一次的觸發器
+        ScriptApp.newTrigger('scheduledCheckAndSend')
+            .timeBased()
+            .everyMinutes(10)
+            .create();
 
-        // 建立週一到週五的觸發器
-        var weekdays = [
-            ScriptApp.WeekDay.MONDAY,
-            ScriptApp.WeekDay.TUESDAY,
-            ScriptApp.WeekDay.WEDNESDAY,
-            ScriptApp.WeekDay.THURSDAY,
-            ScriptApp.WeekDay.FRIDAY
-        ];
-
-        for (var i = 0; i < weekdays.length; i++) {
-            ScriptApp.newTrigger('dailySendMailTask')
-                .timeBased()
-                .onWeekDay(weekdays[i])
-                .atHour(hour)
-                .nearMinute(minute)
-                .create();
-        }
-
-        return '（已建立週一至週五 ' + timeString + ' 排程觸發器，分鐘精度 ±15 分鐘）';
+        return '（已建立每10分鐘自動檢查觸發器）';
     } catch(e) {
-        return '（觸發器建立失敗: ' + e.toString() + '，請在 GAS 編輯器手動執行 setupDailyTrigger）';
+        var props = PropertiesService.getScriptProperties();
+        props.setProperty('LAST_ERROR', '觸發器建立失敗: ' + e.toString());
+        return '（觸發器建立失敗: ' + e.toString() + '，請在 GAS 編輯器手動執行 setupTrigger）';
     }
 }
 
 /**
- * [手動執行] 建立每日排程觸發器。
- * 會讀取已儲存的 MAIL_TIME 設定，建立精確時間觸發器。
- * 也可從網頁「儲存設定」自動建立，不需手動執行。
+ * [手動執行] 建立排程觸發器。
+ * 在 GAS 編輯器選擇此函式並點選「執行」即可。
  */
-function setupDailyTrigger() {
-    var conf = getMailConfig();
-    var result = ensureDailyTrigger(conf.time);
+function setupTrigger() {
+    var result = ensureIntervalTrigger();
     Logger.log(result);
 }
 
 // 保留舊函式名稱相容
-function setupHourlyTrigger() {
-    setupDailyTrigger();
-}
+function setupDailyTrigger() { setupTrigger(); }
+function setupHourlyTrigger() { setupTrigger(); }
 
 /**
- * 每小時自動執行，檢查現在是否為設定的寄信時間。
- * 若當前小時 = 設定小時，且今天尚未寄過，就寄出報表。
+ * 每10分鐘自動執行：檢查是否為週一至週五的設定寄信時間。
+ * 時間吻合且今日尚未寄過 → 寄出報表。
  */
-function hourlyCheckAndSend() {
-    var conf = getMailConfig();
-    if (!conf.recipients || !conf.time) return;
-
-    var parts = conf.time.split(':');
-    var targetHour = parseInt(parts[0], 10);
-    if (isNaN(targetHour)) return;
-
+function scheduledCheckAndSend() {
+    var props = PropertiesService.getScriptProperties();
     var now = new Date();
     var tz = 'Asia/Taipei';
-    var currentHour = parseInt(Utilities.formatDate(now, tz, 'H'), 10);
-    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+    var nowTimeStr = Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm');
 
-    // 檢查現在是否為設定的小時
-    if (currentHour !== targetHour) return;
+    // 記錄觸發器確實有執行
+    props.setProperty('LAST_TRIGGER_RUN', nowTimeStr);
 
-    // 檢查今天是否已寄過（避免重複寄信）
-    var props = PropertiesService.getScriptProperties();
-    var lastSent = props.getProperty('LAST_SENT_DATE') || '';
-    if (lastSent === todayStr) return;
-
-    // 寄出報表
     try {
+        // 只在週一到週五執行
+        var dayOfWeek = parseInt(Utilities.formatDate(now, tz, 'u'), 10); // 1=Mon ... 7=Sun
+        if (dayOfWeek > 5) return; // 週六日不寄
+
+        var conf = getMailConfig();
+        if (!conf.recipients || !conf.time) return;
+
+        // 比對現在時間是否在設定時間的 ±5 分鐘內
+        var parts = conf.time.split(':');
+        var targetHour = parseInt(parts[0], 10);
+        var targetMinute = parseInt(parts[1], 10) || 0;
+        var currentHour = parseInt(Utilities.formatDate(now, tz, 'H'), 10);
+        var currentMinute = parseInt(Utilities.formatDate(now, tz, 'm'), 10);
+
+        var targetTotal = targetHour * 60 + targetMinute;
+        var currentTotal = currentHour * 60 + currentMinute;
+        var diff = currentTotal - targetTotal;
+
+        // 只在設定時間的 0~9 分鐘後寄出（配合每10分鐘觸發一次）
+        if (diff < 0 || diff >= 10) return;
+
+        var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+
+        // 今天已寄過就跳過
+        var lastSent = props.getProperty('LAST_SENT_DATE') || '';
+        if (lastSent === todayStr) return;
+
+        // 檢查配額
+        var remaining = MailApp.getRemainingDailyQuota();
+        if (remaining <= 0) {
+            props.setProperty('LAST_ERROR', nowTimeStr + ' - MailApp 配額已用完');
+            return;
+        }
+
+        // 寄出報表
         var htmlBody = fetchStatsHtml();
         MailApp.sendEmail({
             to: conf.recipients,
@@ -187,11 +207,17 @@ function hourlyCheckAndSend() {
             htmlBody: htmlBody
         });
         props.setProperty('LAST_SENT_DATE', todayStr);
-        Logger.log('已於 ' + todayStr + ' ' + currentHour + ':00 寄出報表');
+        props.setProperty('LAST_SENT_DATETIME', nowTimeStr);
+        props.deleteProperty('LAST_ERROR');
+        Logger.log('已於 ' + nowTimeStr + ' 寄出報表');
     } catch(e) {
-        Logger.log('寄信失敗: ' + e.toString());
+        props.setProperty('LAST_ERROR', nowTimeStr + ' - ' + e.toString());
+        Logger.log('排程寄信失敗: ' + e.toString());
     }
 }
+
+// 保留供舊觸發器相容
+function hourlyCheckAndSend() { scheduledCheckAndSend(); }
 
 function fetchStatsHtml(targetDateStr) {
     var sheetsInfo = [
@@ -324,42 +350,54 @@ function fetchStatsHtml(targetDateStr) {
     return message;
 }
 
-/**
- * 每日精確排程觸發 — 直接寄出報表（不需再比對時間）。
- */
+// 保留供舊觸發器相容（如果還有舊的 dailySendMailTask 觸發器殘留）
 function dailySendMailTask() {
-    var conf = getMailConfig();
-    if (!conf.recipients) return;
-
-    var now = new Date();
-    var tz = 'Asia/Taipei';
-    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-
-    // 避免同一天重複寄信
-    var props = PropertiesService.getScriptProperties();
-    var lastSent = props.getProperty('LAST_SENT_DATE') || '';
-    if (lastSent === todayStr) return;
-
-    try {
-        var htmlBody = fetchStatsHtml();
-        MailApp.sendEmail({
-            to: conf.recipients,
-            name: '炎洲訪客管理',
-            subject: '炎洲集團各廠區 - ' + todayStr + ' 訪客明細',
-            htmlBody: htmlBody
-        });
-        var nowTimeStr = Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm');
-        props.setProperty('LAST_SENT_DATE', todayStr);
-        props.setProperty('LAST_SENT_DATETIME', nowTimeStr);
-        Logger.log('已於 ' + nowTimeStr + ' 寄出報表');
-    } catch(e) {
-        Logger.log('寄信失敗: ' + e.toString());
-    }
+    scheduledCheckAndSend();
 }
 
 // 保留供舊觸發器相容
 function scheduledSendMailTask() {
     dailySendMailTask();
+}
+
+/**
+ * 強制立即寄出報表（略過今日已寄過的檢查）
+ */
+function forceSendNow(recipientsStr) {
+    try {
+        var conf = getMailConfig();
+        var targetRecipients = recipientsStr || conf.recipients;
+        if (!targetRecipients) {
+            return { success: false, error: '無收件人' };
+        }
+
+        var now = new Date();
+        var tz = 'Asia/Taipei';
+        var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+        var nowTimeStr = Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm');
+
+        var remaining = MailApp.getRemainingDailyQuota();
+        if (remaining <= 0) {
+            return { success: false, error: 'MailApp 每日配額已用完（剩餘:' + remaining + '）' };
+        }
+
+        var htmlBody = fetchStatsHtml();
+        MailApp.sendEmail({
+            to: targetRecipients,
+            name: '炎洲訪客管理',
+            subject: '炎洲集團各廠區 - ' + todayStr + ' 訪客明細',
+            htmlBody: htmlBody
+        });
+
+        var props = PropertiesService.getScriptProperties();
+        props.setProperty('LAST_SENT_DATE', todayStr);
+        props.setProperty('LAST_SENT_DATETIME', nowTimeStr);
+        props.deleteProperty('LAST_ERROR');
+
+        return { success: true, message: '已強制寄出！對象：' + targetRecipients + '，配額剩餘：' + (remaining - 1) };
+    } catch(e) {
+        return { success: false, error: e.toString() };
+    }
 }
 
 function triggerTestEmail(recipientsStr, targetDateStr) {
