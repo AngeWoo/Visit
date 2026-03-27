@@ -1099,6 +1099,9 @@
                 if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('請貼上')) {
                     throw new Error('未設定 GAS_WEB_APP_URL！');
                 }
+                if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('請貼上')) {
+                    throw new Error('未設定 GAS_WEB_APP_URL！');
+                }
                 const urlParams = new URLSearchParams({ action });
                 for (let [key, value] of formData.entries()) {
                     urlParams.append(key, value);
