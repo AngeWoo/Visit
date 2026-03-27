@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>炎洲集團訪客登記系統</title>
     <style>
         body {
@@ -37,7 +38,7 @@
 
         .banner span {
             color: #004e92;
-            font-size: 28px;
+            font-size: 52px;
             font-weight: 900;
             letter-spacing: 4px;
             /* Create a highly visible 3D effect */
@@ -199,9 +200,21 @@
         .pagination {
             margin-top: 20px;
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            gap: 10px;
             align-items: center;
             justify-content: center;
+        }
+
+        .page-info {
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        .page-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         button {
@@ -272,31 +285,276 @@
             flex-wrap: wrap;
             gap: 15px;
             justify-content: flex-start;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
         
         .chart-box {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            flex: 1 1 calc(33.333% - 15px);
-            min-width: 320px;
+            background: linear-gradient(145deg, #ffffff, #f0f4f8);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 78, 146, 0.08);
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.04),
+                0 10px 24px rgba(0, 78, 146, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            flex: 1 1 calc(50% - 15px);
+            min-width: 280px;
             max-height: 380px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .chart-box:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 8px 16px rgba(0, 0, 0, 0.08),
+                0 16px 32px rgba(0, 78, 146, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
         .chart-box-tall {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            background: linear-gradient(145deg, #ffffff, #f0f4f8);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 78, 146, 0.08);
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.04),
+                0 10px 24px rgba(0, 78, 146, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
             flex: 1 1 calc(50% - 15px);
-            min-width: 420px;
+            min-width: 0;
             min-height: 320px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .chart-box-tall:hover {
+            transform: translateY(-3px);
+            box-shadow:
+                0 8px 16px rgba(0, 0, 0, 0.08),
+                0 16px 32px rgba(0, 78, 146, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .mail-form {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .mail-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        .mail-field:first-child {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .mail-label {
+            font-weight: bold;
+            font-size: 13px;
+            color: #475569;
+        }
+
+        /* ===== Mobile Responsive ===== */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 0;
+                font-size: 14px;
+            }
+
+            .banner {
+                flex-direction: column;
+                padding: 12px 15px;
+                font-size: 24px;
+                gap: 8px;
+                text-align: center;
+            }
+
+            .banner img {
+                position: static;
+                max-height: 35px;
+            }
+
+            .banner span {
+                font-size: 28px;
+                letter-spacing: 2px;
+                text-shadow: 1px 1px 0px #ced4da, 2px 2px 3px rgba(0, 78, 146, 0.3);
+            }
+
+            .nav-buttons {
+                position: static;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .admin-btn, .home-btn {
+                font-size: 13px;
+                padding: 6px 14px;
+            }
+
+            .tabs {
+                gap: 6px;
+                margin-bottom: 12px;
+                padding: 0 10px;
+            }
+
+            .tab {
+                padding: 8px 14px;
+                font-size: 14px;
+            }
+
+            .controls-bar {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 0 10px;
+                gap: 10px;
+            }
+
+            .date-filter {
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+
+            .date-filter input {
+                flex: 1;
+                min-width: 0;
+            }
+
+            #statSummary {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                justify-content: center;
+                font-size: 13px;
+                padding: 5px 10px !important;
+            }
+
+            #searchInput {
+                max-width: 100%;
+                font-size: 14px;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 10px;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            table {
+                min-width: 900px;
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 6px;
+                font-size: 12px;
+            }
+
+            .pagination {
+                gap: 8px;
+                font-size: 13px;
+            }
+
+            .page-info {
+                font-size: 13px;
+            }
+
+            .page-buttons {
+                display: flex;
+                gap: 6px;
+                flex-wrap: nowrap;
+            }
+
+            .page-buttons button {
+                padding: 6px 10px;
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .dashboard {
+                max-width: 100% !important;
+                padding: 0 8px;
+                box-sizing: border-box;
+                overflow-x: hidden;
+            }
+
+            .dashboard h3 {
+                font-size: 16px !important;
+            }
+
+            .dashboard > div {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
+            }
+
+            .chart-box {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                flex: 1 1 100%;
+                box-sizing: border-box;
+            }
+
+            .chart-box-tall {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                flex: 1 1 100%;
+                box-sizing: border-box;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr !important;
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            /* Admin cards */
+            .admin-card {
+                padding: 14px !important;
+            }
+
+            .admin-card h4 {
+                font-size: 15px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .mail-form {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .mail-field {
+                width: 100%;
+            }
+
+            .mail-field input {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+
+            .admin-btn-row {
+                width: 100%;
+            }
+
+            .admin-action-btn {
+                flex: 1;
+                padding: 7px 10px !important;
+                font-size: 12px !important;
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
@@ -347,45 +605,58 @@
         </table>
 
         <div class="pagination" id="paginationControls" style="display:none;">
-            <button id="btnFirst" onclick="changePage('first')">最前頁</button>
-            <button id="btnPrev" onclick="changePage(-1)">上一頁</button>
-            <span id="pageInfo"></span>
-            <button id="btnNext" onclick="changePage(1)">下一頁</button>
-            <button id="btnLast" onclick="changePage('last')">最後頁</button>
+            <div id="pageInfo" class="page-info"></div>
+            <div class="page-buttons">
+                <button id="btnFirst" onclick="changePage('first')">最前頁</button>
+                <button id="btnPrev" onclick="changePage(-1)">上一頁</button>
+                <button id="btnNext" onclick="changePage(1)">下一頁</button>
+                <button id="btnLast" onclick="changePage('last')">最後頁</button>
+            </div>
         </div>
     </div>
 
     <!-- ADMIN DASHBOARD VIEW -->
     <div class="dashboard" id="adminDashboard">
         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <h3 style="color: #004e92; margin: 0; font-size: 24px;">管理中心 [v3.1] - 各廠區統計與郵件排程系統</h3>
+            <h3 style="color: #004e92; margin: 0; font-size: 24px;">管理中心 - 各廠區統計與郵件排程系統</h3>
             <div style="display:flex; gap:10px;">
                 <button onclick="toggleAdmin()" style="padding: 8px 15px; background: #e2e8f0; border-radius: 4px; font-weight: bold; border: none; cursor:pointer;">✖ 返回列表</button>
             </div>
         </div>
 
-        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 10px;">
-            <h4 style="margin: 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">✉️</span> 自動報表排程</h4>
-            <label style="font-size:15px; margin-left: 20px; flex: 1; display:flex; align-items:center;">收件人(多筆逗號分隔): 
-                <input type="text" id="mailRecipients" style="flex: 1; margin-left:10px; padding: 8px; border:1px solid #cbd5e1; border-radius:4px; max-width:100%;" placeholder="userA@yemchio.com, userB@yemchio.com">
-            </label>
-            <label style="font-size:15px; margin-left: 10px;">每日寄出時間: <input type="time" id="mailTime" style="padding: 8px; border:1px solid #cbd5e1; border-radius:4px;"></label>
-            <button onclick="saveMailConfig()" style="background:#004e92; color:white; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:15px;">💾 儲存設定</button>
-            <button onclick="testMail()" style="background:#64748b; color:white; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold;">🚀 立即強制發送測試信</button>
-            <span id="mailStatus" style="color:#059669; font-weight:bold; font-size:15px; margin-left:10px;"></span>
+        <div class="admin-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; margin-bottom: 10px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">✉️</span> 自動報表排程</h4>
+            <div class="mail-form">
+                <label class="mail-field">
+                    <span class="mail-label">收件人 (多筆逗號分隔):</span>
+                    <input type="text" id="mailRecipients" style="width:100%; padding: 8px; border:1px solid #cbd5e1; border-radius:4px; box-sizing:border-box;" placeholder="userA@yemchio.com, userB@yemchio.com">
+                </label>
+                <label class="mail-field">
+                    <span class="mail-label">每日寄出時間:</span>
+                    <input type="time" id="mailTime" style="padding: 8px; border:1px solid #cbd5e1; border-radius:4px;">
+                </label>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center;">
+                <button class="admin-action-btn" onclick="saveMailConfig()" style="background:#004e92; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">💾 儲存設定</button>
+                <button class="admin-action-btn" onclick="testMail()" style="background:#64748b; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">🚀 發送測試信</button>
+                <span id="triggerStatus" style="padding:5px 12px; border-radius:4px; font-size:13px; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; display:none;"></span>
+                <span id="mailStatus" style="color:#059669; font-weight:bold; font-size:14px;"></span>
+            </div>
         </div>
 
         <!-- NEW DATE SEARCH SECTION -->
-        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; margin-bottom: 20px;">
-            <h4 style="margin: 0 0 15px 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">🔍</span> 依日期查詢當晚訪客明細 (格式同郵件)</h4>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <input type="date" id="searchDateInput" style="padding: 10px; border:1px solid #cbd5e1; border-radius:4px; font-size: 16px;">
-                <button onclick="searchVisitorsByDate()" style="background:#0284c7; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">🔍 查詢當日資料</button>
-                <button onclick="sendDateMail()" style="background:#059669; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">📧 依此查詢發送郵件</button>
-                <button onclick="clearDateSearch()" style="background:#e2e8f0; color:#475569; border:none; padding:10px 18px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 16px;">✖ 取消</button>
-                <span id="searchStatus" style="margin-left: 10px; font-weight: bold; color: #64748b;"></span>
+        <div class="admin-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: #1e293b; display: flex; align-items: center;"><span style="font-size:22px; margin-right:8px;">🔍</span> 依日期查詢當日訪客明細</h4>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom:8px;">
+                <input type="date" id="searchDateInput" style="padding: 8px; border:1px solid #cbd5e1; border-radius:4px; font-size: 14px; flex:1; max-width:200px;">
+                <span id="searchStatus" style="font-weight: bold; color: #64748b; font-size:13px;"></span>
             </div>
-            <div id="searchResultArea" style="margin-top: 20px; background: #f8fafc; border-radius: 8px; padding: 15px; border: 1px solid #e2e8f0; display: none;"></div>
+            <div class="admin-btn-row" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="admin-action-btn" onclick="searchVisitorsByDate()" style="background:#0284c7; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">🔍 查詢當日資料</button>
+                <button class="admin-action-btn" onclick="sendDateMail()" style="background:#059669; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">📧 發送郵件</button>
+                <button class="admin-action-btn" onclick="clearDateSearch()" style="background:#e2e8f0; color:#475569; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">✖ 取消</button>
+            </div>
+            <div id="searchResultArea" style="margin-top: 15px; background: #f8fafc; border-radius: 8px; padding: 15px; border: 1px solid #e2e8f0; display: none;"></div>
         </div>
 
         <div class="chart-box">
@@ -394,7 +665,7 @@
         <div class="chart-box">
             <canvas id="pieChart"></canvas>
         </div>
-        <div style="width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        <div class="chart-grid" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
             <div class="chart-box-tall">
                 <canvas id="topCompanyChart_0" height="300"></canvas>
             </div>
@@ -408,7 +679,7 @@
                 <canvas id="topCompanyChart_3" height="300"></canvas>
             </div>
         </div>
-        <div style="width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:8px;">
+        <div class="chart-grid" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:8px;">
             <div class="chart-box-tall">
                 <canvas id="topDeptChart_0" height="300"></canvas>
             </div>
@@ -853,6 +1124,23 @@
                 }
                 document.getElementById('mailRecipients').value = conf.recipients || 'ange.wu@ycgroup.tw';
                 document.getElementById('mailTime').value = conf.time || '08:00';
+
+                // 顯示觸發器狀態
+                var triggerEl = document.getElementById('triggerStatus');
+                if (triggerEl) {
+                    triggerEl.style.display = 'block';
+                    if (conf.triggerActive) {
+                        triggerEl.style.background = '#f0fdf4';
+                        triggerEl.style.borderColor = '#bbf7d0';
+                        triggerEl.style.color = '#166534';
+                        triggerEl.innerHTML = '✅ 週一至週五排程運作中（' + (conf.triggerCount || '') + '個觸發器）｜ 上次寄出：' + (conf.lastSent || '尚未寄出');
+                    } else {
+                        triggerEl.style.background = '#fef2f2';
+                        triggerEl.style.borderColor = '#fecaca';
+                        triggerEl.style.color = '#991b1b';
+                        triggerEl.innerHTML = '❌ 排程未啟用 — 請點「儲存設定」建立';
+                    }
+                }
             } catch(e) { console.warn('無法載入設定: ' + e.message); }
         }
 

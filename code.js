@@ -56,9 +56,24 @@ function doPost(e) {
 
 function getMailConfig() {
     var props = PropertiesService.getScriptProperties();
+    var hasTrigger = false;
+    var triggerCount = 0;
+    try {
+        var triggers = ScriptApp.getProjectTriggers();
+        for (var i = 0; i < triggers.length; i++) {
+            var handler = triggers[i].getHandlerFunction();
+            if (handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
+                hasTrigger = true;
+                triggerCount++;
+            }
+        }
+    } catch(e) {}
     return {
         recipients: props.getProperty('MAIL_RECIPIENTS') || 'ange.wu@ycgroup.tw',
-        time: props.getProperty('MAIL_TIME') || '08:00'
+        time: props.getProperty('MAIL_TIME') || '16:50',
+        triggerActive: hasTrigger,
+        triggerCount: triggerCount,
+        lastSent: props.getProperty('LAST_SENT_DATETIME') || props.getProperty('LAST_SENT_DATE') || '尚未寄出'
     };
 }
 
@@ -67,40 +82,115 @@ function saveMailConfig(recipients, timeString) {
         var props = PropertiesService.getScriptProperties();
         if (recipients) props.setProperty('MAIL_RECIPIENTS', recipients);
         if (timeString) props.setProperty('MAIL_TIME', timeString);
-        return { success: true, message: '設定已儲存！收件人: ' + recipients + '，時間: ' + timeString };
+
+        // 自動建立每日精確時間觸發器
+        var triggerMsg = ensureDailyTrigger(timeString);
+
+        return { success: true, message: '設定已儲存！收件人: ' + recipients + '，每日 ' + timeString + ' 自動寄出。' + triggerMsg };
     } catch(e) {
         return { success: false, error: e.toString() };
     }
 }
 
 /**
- * [手動執行一次] 建立每日排程觸發器。
- * 請在 GAS 編輯器中選擇此函式然後執行一次即可，不需要重複執行。
+ * 根據設定的時間建立每日精確觸發器。
+ * 會先刪除舊的排程觸發器，再建立新的。
  */
-function createDailyTrigger() {
-    // 刪除舊的同名觸發器
-    var triggers = ScriptApp.getProjectTriggers();
-    for (var i = 0; i < triggers.length; i++) {
-        if (triggers[i].getHandlerFunction() === 'scheduledSendMailTask') {
-            ScriptApp.deleteTrigger(triggers[i]);
+function ensureDailyTrigger(timeString) {
+    try {
+        // 刪除所有舊的排程觸發器
+        var triggers = ScriptApp.getProjectTriggers();
+        for (var i = 0; i < triggers.length; i++) {
+            var handler = triggers[i].getHandlerFunction();
+            if (handler === 'dailySendMailTask' || handler === 'hourlyCheckAndSend') {
+                ScriptApp.deleteTrigger(triggers[i]);
+            }
         }
+
+        // 解析時間
+        var parts = timeString.split(':');
+        var hour = parseInt(parts[0], 10);
+        var minute = parseInt(parts[1], 10) || 0;
+
+        // 建立週一到週五的觸發器
+        var weekdays = [
+            ScriptApp.WeekDay.MONDAY,
+            ScriptApp.WeekDay.TUESDAY,
+            ScriptApp.WeekDay.WEDNESDAY,
+            ScriptApp.WeekDay.THURSDAY,
+            ScriptApp.WeekDay.FRIDAY
+        ];
+
+        for (var i = 0; i < weekdays.length; i++) {
+            ScriptApp.newTrigger('dailySendMailTask')
+                .timeBased()
+                .onWeekDay(weekdays[i])
+                .atHour(hour)
+                .nearMinute(minute)
+                .create();
+        }
+
+        return '（已建立週一至週五 ' + timeString + ' 排程觸發器，分鐘精度 ±15 分鐘）';
+    } catch(e) {
+        return '（觸發器建立失敗: ' + e.toString() + '，請在 GAS 編輯器手動執行 setupDailyTrigger）';
     }
-    
+}
+
+/**
+ * [手動執行] 建立每日排程觸發器。
+ * 會讀取已儲存的 MAIL_TIME 設定，建立精確時間觸發器。
+ * 也可從網頁「儲存設定」自動建立，不需手動執行。
+ */
+function setupDailyTrigger() {
     var conf = getMailConfig();
-    var hour = 8;
-    if (conf.time) {
-        var parts = conf.time.split(':');
-        if (parts.length > 0) hour = parseInt(parts[0], 10) || 8;
+    var result = ensureDailyTrigger(conf.time);
+    Logger.log(result);
+}
+
+// 保留舊函式名稱相容
+function setupHourlyTrigger() {
+    setupDailyTrigger();
+}
+
+/**
+ * 每小時自動執行，檢查現在是否為設定的寄信時間。
+ * 若當前小時 = 設定小時，且今天尚未寄過，就寄出報表。
+ */
+function hourlyCheckAndSend() {
+    var conf = getMailConfig();
+    if (!conf.recipients || !conf.time) return;
+
+    var parts = conf.time.split(':');
+    var targetHour = parseInt(parts[0], 10);
+    if (isNaN(targetHour)) return;
+
+    var now = new Date();
+    var tz = 'Asia/Taipei';
+    var currentHour = parseInt(Utilities.formatDate(now, tz, 'H'), 10);
+    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+
+    // 檢查現在是否為設定的小時
+    if (currentHour !== targetHour) return;
+
+    // 檢查今天是否已寄過（避免重複寄信）
+    var props = PropertiesService.getScriptProperties();
+    var lastSent = props.getProperty('LAST_SENT_DATE') || '';
+    if (lastSent === todayStr) return;
+
+    // 寄出報表
+    try {
+        var htmlBody = fetchStatsHtml();
+        MailApp.sendEmail({
+            to: conf.recipients,
+            name: '炎洲訪客管理',
+            subject: '炎洲集團各廠區 - ' + todayStr + ' 訪客明細',
+            htmlBody: htmlBody
+        });
+        props.setProperty('LAST_SENT_DATE', todayStr);
+        Logger.log('已於 ' + todayStr + ' ' + currentHour + ':00 寄出報表');
+    } catch(e) {
+        Logger.log('寄信失敗: ' + e.toString());
     }
-    
-    ScriptApp.newTrigger('scheduledSendMailTask')
-        .timeBased()
-        .everyDays(1)
-        .atHour(hour)
-        .nearMinute(0)
-        .create();
-        
-    Logger.log('排程已建立，每天 ' + hour + ':00 寄信給 ' + conf.recipients);
 }
 
 function fetchStatsHtml(targetDateStr) {
@@ -128,12 +218,13 @@ function fetchStatsHtml(targetDateStr) {
 
     var dateLabel = filterY + '年' + filterM + '月' + filterD + '日';
 
-    var headerStyle = 'background:#004e92;color:white;padding:8px 12px;text-align:left;font-size:12px;white-space:nowrap;';
-    var tdStyle = 'padding:7px 10px;border:1px solid #e2e8f0;font-size:13px;white-space:nowrap;';
-    var tblStyle = 'border-collapse:collapse;table-layout:auto;font-family:sans-serif;margin-bottom:20px;';
+    var headerStyle = 'background:#004e92;color:white;padding:8px 10px;text-align:left;font-size:12px;white-space:nowrap;';
+    var tdStyle = 'padding:7px 8px;border:1px solid #e2e8f0;font-size:12px;white-space:nowrap;';
+    var tblStyle = 'border-collapse:collapse;table-layout:fixed;width:1200px;font-family:sans-serif;margin-bottom:20px;';
+    var colWidths = [40, 180, 80, 120, 130, 110, 110, 80, 170, 100];
 
-    var message = '<div style="font-family:sans-serif;max-width:100%;overflow-x:auto;margin:0 auto;">';
-    message += '<h2 style="color:#004e92;border-bottom:3px solid #004e92;padding-bottom:8px;">炎洲集團 - ' + dateLabel + ' 今日訪客詳細資料</h2>';
+    var message = '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:sans-serif;"><tr><td align="center"><table cellpadding="0" cellspacing="0" border="0" width="1200" style="font-family:sans-serif;max-width:1200px;"><tr><td>';
+    message += '<h2 style="color:#004e92;border-bottom:3px solid #004e92;padding-bottom:8px;font-size:18px;">炎洲集團 - ' + dateLabel + ' 今日訪客詳細資料</h2>';
 
     for (var i = 0; i < sheetsInfo.length; i++) {
         var sheetObj = sheetsInfo[i];
@@ -197,34 +288,31 @@ function fetchStatsHtml(targetDateStr) {
         if (todayRows.length === 0) {
             message += '<p style="color:#94a3b8;font-size:13px;padding:0 14px;">該日無訪客記錄</p>';
         } else {
-            message += '<table style="' + tblStyle + '">';
+            var colHeaders = ['#', '填表時間', '姓名', '手機', '訪客公司', '拜訪公司', '拜訪單位', '受訪者', '事由', '離廠時間'];
+            message += '<table style="' + tblStyle + '" cellpadding="0" cellspacing="0" border="0">';
+            message += '<colgroup>';
+            for (var c = 0; c < colWidths.length; c++) {
+                message += '<col width="' + colWidths[c] + '" style="width:' + colWidths[c] + 'px;">';
+            }
+            message += '</colgroup>';
             message += '<tr>';
-            message += '<th style="' + headerStyle + 'width:36px;text-align:center;">#</th>';
-            message += '<th style="' + headerStyle + '">填表時間</th>';
-            message += '<th style="' + headerStyle + '">姓名</th>';
-            message += '<th style="' + headerStyle + '">手機</th>';
-            message += '<th style="' + headerStyle + '">訪客公司</th>';
-            message += '<th style="' + headerStyle + '">拜訪公司</th>';
-            message += '<th style="' + headerStyle + '">拜訪單位</th>';
-            message += '<th style="' + headerStyle + '">受訪者</th>';
-            message += '<th style="' + headerStyle + '">事由</th>';
-            message += '<th style="' + headerStyle + '">離廠時間</th>';
+            for (var c = 0; c < colHeaders.length; c++) {
+                var align = (c === 0) ? 'text-align:center;' : '';
+                message += '<th width="' + colWidths[c] + '" style="' + headerStyle + align + 'width:' + colWidths[c] + 'px;">' + colHeaders[c] + '</th>';
+            }
             message += '</tr>';
 
             for (var r = 0; r < todayRows.length; r++) {
                 var row = todayRows[r];
                 var bg = (r % 2 === 0) ? '#f8fafc' : '#ffffff';
+                var vals = [r + 1, row[0] || '-', row[1] || '-', row[2] || '-', row[3] || '-', row[4] || '-', row[5] || '-', row[6] || '-', row[7] || '-', row[8] || '-'];
                 message += '<tr style="background:' + bg + '">';
-                message += '<td style="' + tdStyle + 'text-align:center;color: #94a3b8;">' + (r + 1) + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[0] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';font-weight:bold;white-space:nowrap;">' + (row[1] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[2] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[3] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[4] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[5] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[6] || '-') + '</td>';
-                message += '<td style="' + tdStyle + '">' + (row[7] || '-') + '</td>';
-                message += '<td style="' + tdStyle + ';white-space:nowrap;">' + (row[8] || '-') + '</td>';
+                for (var c = 0; c < vals.length; c++) {
+                    var extra = '';
+                    if (c === 0) extra = 'text-align:center;color:#94a3b8;';
+                    if (c === 2) extra = 'font-weight:bold;';
+                    message += '<td width="' + colWidths[c] + '" style="' + tdStyle + extra + 'width:' + colWidths[c] + 'px;">' + vals[c] + '</td>';
+                }
                 message += '</tr>';
             }
             message += '</table>';
@@ -232,21 +320,46 @@ function fetchStatsHtml(targetDateStr) {
     }
 
     message += '<p style="color:#94a3b8;font-size:11px;margin-top:20px;">本郵件由系統自動產生 · ' + Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm') + '</p>';
-    message += '</div>';
+    message += '</td></tr></table></td></tr></table>';
     return message;
 }
 
-function scheduledSendMailTask() {
+/**
+ * 每日精確排程觸發 — 直接寄出報表（不需再比對時間）。
+ */
+function dailySendMailTask() {
     var conf = getMailConfig();
     if (!conf.recipients) return;
-    var htmlBody = fetchStatsHtml();
-    
-    MailApp.sendEmail({
-        to: conf.recipients,
-        name: '炎洲防客管理系統',
-        subject: '【系統報表】炎洲集團各廠區 - 最新訪客統計摘要',
-        htmlBody: htmlBody
-    });
+
+    var now = new Date();
+    var tz = 'Asia/Taipei';
+    var todayStr = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+
+    // 避免同一天重複寄信
+    var props = PropertiesService.getScriptProperties();
+    var lastSent = props.getProperty('LAST_SENT_DATE') || '';
+    if (lastSent === todayStr) return;
+
+    try {
+        var htmlBody = fetchStatsHtml();
+        MailApp.sendEmail({
+            to: conf.recipients,
+            name: '炎洲訪客管理',
+            subject: '炎洲集團各廠區 - ' + todayStr + ' 訪客明細',
+            htmlBody: htmlBody
+        });
+        var nowTimeStr = Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm');
+        props.setProperty('LAST_SENT_DATE', todayStr);
+        props.setProperty('LAST_SENT_DATETIME', nowTimeStr);
+        Logger.log('已於 ' + nowTimeStr + ' 寄出報表');
+    } catch(e) {
+        Logger.log('寄信失敗: ' + e.toString());
+    }
+}
+
+// 保留供舊觸發器相容
+function scheduledSendMailTask() {
+    dailySendMailTask();
 }
 
 function triggerTestEmail(recipientsStr, targetDateStr) {
@@ -255,17 +368,22 @@ function triggerTestEmail(recipientsStr, targetDateStr) {
         var targetRecipients = recipientsStr || conf.recipients;
         var htmlBody = fetchStatsHtml(targetDateStr);
         
-        var subject = targetDateStr 
-            ? '【手動補發】炎洲集團各廠區 - ' + targetDateStr + ' 訪客明細'
-            : '【手動測試】炎洲集團各廠區 - 報表發送演練';
-            
+        var now = new Date();
+        var tz = 'Asia/Taipei';
+        var dateStr = targetDateStr || Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+        var subject = '【手動補發】炎洲集團各廠區 - ' + dateStr + ' 訪客明細';
+
         MailApp.sendEmail({
             to: targetRecipients,
-            name: '炎洲防客管理',
+            name: '炎洲訪客管理',
             subject: subject,
             htmlBody: htmlBody
         });
-        
+
+        var props = PropertiesService.getScriptProperties();
+        var nowTimeStr = Utilities.formatDate(now, tz, 'yyyy/MM/dd HH:mm');
+        props.setProperty('LAST_SENT_DATETIME', nowTimeStr);
+
         return { success: true, message: '信件已成功發送！對象：' + targetRecipients };
     } catch(e) {
         return { success: false, error: e.toString() };
