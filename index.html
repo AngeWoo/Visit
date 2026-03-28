@@ -1599,6 +1599,204 @@
                 });
             });
         }
+
+        // Clean overrides for GAS-related admin messages and API handling.
+        async function execGasApi(action, formData = new FormData()) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                return new Promise((resolve, reject) => {
+                    if (action === 'get_config') {
+                        google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getMailConfig();
+                        return;
+                    }
+                    if (action === 'save_config') {
+                        google.script.run
+                            .withSuccessHandler(resolve)
+                            .withFailureHandler(reject)
+                            .saveMailConfig(formData.get('recipients'), formData.get('time'));
+                        return;
+                    }
+                    if (action === 'test_mail') {
+                        google.script.run
+                            .withSuccessHandler(resolve)
+                            .withFailureHandler(reject)
+                            .triggerTestEmail(formData.get('recipients'));
+                        return;
+                    }
+                    reject(new Error('不支援的 GAS 動作: ' + action));
+                });
+            }
+
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('請貼上')) {
+                throw new Error('未設定 GAS_WEB_APP_URL。');
+            }
+
+            const urlParams = new URLSearchParams({ action });
+            for (const [key, value] of formData.entries()) {
+                urlParams.append(key, value);
+            }
+
+            const res = await fetch(`${GAS_WEB_APP_URL}?${urlParams.toString()}`);
+            const raw = await res.text();
+            console.log('[GAS RAW RESPONSE]', raw);
+
+            try {
+                return JSON.parse(raw);
+            } catch (parseErr) {
+                throw new Error(
+                    'GAS 回傳的不是 JSON。請確認已重新部署新版本，且存取權限設為所有人。內容預覽：' +
+                    raw.substring(0, 200)
+                );
+            }
+        }
+
+        async function fetchMailConfig() {
+            try {
+                const conf = await execGasApi('get_config');
+                document.getElementById('mailRecipients').value = conf.recipients || 'ange.wu@ycgroup.tw';
+                document.getElementById('mailTime').value = conf.time || '08:00';
+
+                const triggerEl = document.getElementById('triggerStatus');
+                if (triggerEl) {
+                    triggerEl.style.display = 'block';
+                    if (conf.triggerActive) {
+                        triggerEl.style.background = '#f0fdf4';
+                        triggerEl.style.borderColor = '#bbf7d0';
+                        triggerEl.style.color = '#166534';
+                        triggerEl.innerHTML =
+                            `✅ 週一至週五排程運作中（${conf.triggerCount || 0} 個觸發器）` +
+                            ` ｜ 上次寄出：${conf.lastSent || '尚未寄出'}`;
+                    } else {
+                        triggerEl.style.background = '#fef2f2';
+                        triggerEl.style.borderColor = '#fecaca';
+                        triggerEl.style.color = '#991b1b';
+                        triggerEl.innerHTML = '⚠️ 目前沒有啟用中的排程觸發器，請重新儲存設定建立排程。';
+                    }
+                    if (conf.lastTriggerRun) {
+                        triggerEl.innerHTML += `<br>⏱ 觸發器最後執行：${conf.lastTriggerRun}`;
+                    }
+                }
+
+                const errorEl = document.getElementById('triggerError');
+                if (errorEl && conf.lastError) {
+                    errorEl.style.display = 'block';
+                    errorEl.innerHTML =
+                        `⚠️ 最後錯誤：${conf.lastError}` +
+                        ' <a href="javascript:void(0)" onclick="clearError()" style="color:#2563eb;text-decoration:underline;margin-left:8px;">清除</a>';
+                } else if (errorEl) {
+                    errorEl.style.display = 'none';
+                    errorEl.innerHTML = '';
+                }
+            } catch (e) {
+                console.warn('讀取郵件設定失敗:', e.message);
+            }
+        }
+
+        async function saveMailConfig() {
+            const time = document.getElementById('mailTime').value;
+            const recs = document.getElementById('mailRecipients').value;
+            const status = document.getElementById('mailStatus');
+            status.innerText = '正在儲存設定並更新排程...';
+
+            try {
+                const formData = new FormData();
+                formData.append('time', time);
+                formData.append('recipients', recs);
+
+                const data = await execGasApi('save_config', formData);
+                status.innerText = data.success
+                    ? `✅ ${data.message || '設定已儲存。'}`
+                    : `❌ ${data.error || '儲存失敗。'}`;
+                fetchMailConfig();
+            } catch (e) {
+                status.innerText = `❌ ${String(e)}`;
+            }
+
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function testMail() {
+            const status = document.getElementById('mailStatus');
+            const recs = document.getElementById('mailRecipients').value;
+            status.innerText = '正在發送測試信...';
+            console.log('[testMail] 收件人:', recs);
+            console.log('[testMail] 使用 GAS URL:', GAS_WEB_APP_URL);
+
+            try {
+                const formData = new FormData();
+                formData.append('recipients', recs);
+
+                const data = await execGasApi('test_mail', formData);
+                console.log('[testMail] GAS 回傳結果:', JSON.stringify(data));
+                status.innerText = data.success
+                    ? `✅ ${data.message || '測試信已寄出。'}`
+                    : `❌ ${data.error || '測試信寄送失敗。'}`;
+                fetchMailConfig();
+            } catch (e) {
+                status.innerText = `❌ ${String(e)}`;
+            }
+
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function forceSend() {
+            const status = document.getElementById('mailStatus');
+            const recs = document.getElementById('mailRecipients').value;
+            if (!confirm('確定要立即寄出正式郵件嗎？這次寄送不會取消既有排程。')) return;
+
+            status.innerText = '正在強制寄出郵件...';
+            try {
+                const res = await fetch(GAS_WEB_APP_URL + '?action=force_send&recipients=' + encodeURIComponent(recs));
+                const data = await res.json();
+                status.innerText = data.success
+                    ? `✅ ${data.message || '已寄出正式郵件。'}`
+                    : `❌ ${data.error || '寄送失敗。'}`;
+                fetchMailConfig();
+            } catch (e) {
+                status.innerText = `❌ ${String(e)}`;
+            }
+
+            setTimeout(() => { status.innerText = ''; }, 8000);
+        }
+
+        async function clearError() {
+            try {
+                await fetch(GAS_WEB_APP_URL + '?action=clear_error');
+                fetchMailConfig();
+            } catch (e) {
+                console.warn('清除錯誤失敗:', e);
+            }
+        }
+
+        async function sendDateMail() {
+            const dateInput = document.getElementById('searchDateInput').value;
+            const status = document.getElementById('searchStatus');
+            const recipients = document.getElementById('mailRecipients').value;
+
+            if (!dateInput) {
+                alert('請先選擇日期。');
+                return;
+            }
+
+            if (!confirm(`確定要寄出 ${dateInput} 的資料給 ${recipients || '目前設定的收件人'} 嗎？`)) {
+                return;
+            }
+
+            status.innerText = '正在發送指定日期郵件...';
+
+            try {
+                const url = `${GAS_WEB_APP_URL}?action=send_date_mail&date=${dateInput}&recipients=${encodeURIComponent(recipients)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                status.innerText = data.success
+                    ? `✅ ${data.message || '郵件已寄出。'}`
+                    : `❌ ${data.error || '寄送失敗。'}`;
+            } catch (e) {
+                status.innerText = `❌ ${e.message}`;
+            }
+
+            setTimeout(() => { status.innerText = ''; }, 5000);
+        }
     </script>
 </body>
 
